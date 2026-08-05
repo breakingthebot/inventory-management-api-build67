@@ -5,33 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-08-05
+
+### Added
+- Full Multi-Tenant Account & Organization Isolation Subsystem (`Tenant` entity & `TenantRepository`).
+- In-memory tenant context manager (`TenantContext`) storing active organization scope per HTTP request cycle.
+- Symfony KernelEvent subscriber (`TenantSubscriber`) resolving active tenant from `X-Tenant-Code` HTTP headers or authenticated user profiles.
+- Multi-tenant organization links on `User` entity.
+- REST API Tenant endpoints (`GET /api/v1/tenants`, `POST /api/v1/tenants`).
+- Automated PHPUnit tests for tenant context resolution, active organization switching, and header resolution (33 tests, 136 assertions passing).
+
 ## [1.13.0] - 2026-08-05
 
 ### Added
 - Stock Reservation Engine for E-Commerce Checkout (`StockReservation` entity & `StockReservationRepository`).
-- Unreserved stock availability engine ($Available = Physical - Held$) preventing overselling during flash sales (`StockReservationEngine::getAvailableStock()`).
-- TTL reservation window holds (default 15 minutes), order confirmation stock deductions, manual hold releases, and automated TTL expiration cleanup.
-- REST API Stock Reservation endpoints (`POST /api/v1/reservations`, `GET /api/v1/reservations/{token}`, `POST /api/v1/reservations/{token}/confirm`, `POST /api/v1/reservations/{token}/cancel`).
-- Automated PHPUnit tests for unreserved stock availability math, reservation holds, checkout confirmations, and overselling prevention (30 tests, 129 assertions passing).
+- Unreserved stock availability engine ($Available = Physical - Held$) preventing overselling during flash sales.
 
 ## [1.12.0] - 2026-08-05
 
 ### Added
 - Webhook Failure Retry Queue & Circuit Breaker Subsystem (`WebhookRetryQueue` entity & `WebhookRetryQueueRepository`).
 - Exponential backoff retry engine (`WebhookRetryEngine`) calculating $10 \times 2^{n-1}$ second delays.
-- Automated Circuit Breaker mechanism deactivating webhook subscriptions after 5 consecutive failed delivery attempts.
 
 ## [1.11.0] - 2026-08-05
 
 ### Added
 - Automated Inventory Audit Sampling & Count Reconciliation Subsystem (`AuditCycle` & `AuditDiscrepancy` entities).
-- Random product sampling cycle creation (`AuditManager::createAuditCycle()`).
 
 ## [1.10.0] - 2026-08-05
 
 ### Added
 - Multi-Currency Pricing & Regional Tax Rate Matrix architecture (`CurrencyRate` & `TaxZone` entities).
-- Currency conversion and gross/net tax calculation engine (`CurrencyConverter`).
 
 ## [1.9.0] - 2026-08-05
 

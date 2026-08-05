@@ -46,6 +46,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read', 'user:write'])]
     private ?string $fullName = null;
 
+    #[ORM\ManyToOne(targetEntity: Tenant::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['user:read'])]
+    private ?Tenant $tenant = null;
+
     #[ORM\Column]
     #[Groups(['user:read'])]
     private \DateTimeImmutable $createdAt;
@@ -109,6 +114,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setFullName(?string $fullName): self
     {
         $this->fullName = $fullName;
+        return $this;
+    }
+
+    public function getTenant(): ?Tenant
+    {
+        return $this->tenant;
+    }
+
+    public function setTenant(?Tenant $tenant): self
+    {
+        $this->tenant = $tenant;
         return $this;
     }
 
