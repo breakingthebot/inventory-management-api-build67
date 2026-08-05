@@ -2,11 +2,12 @@
 
 [![Inventory Management API CI](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml/badge.svg)](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml)
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, API Rate Limiting & Sliding Window Throttling, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Multi-Currency Conversions (`USD`, `EUR`, `GBP`, `CAD`), Regional Tax Rate Matrix (`US-CA`, `EU-DE`, `UK-VAT`), API Rate Limiting & Sliding Window Throttling, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
+- **Multi-Currency & Tax Engine**: `CurrencyRate`, `TaxZone`, `CurrencyConverter` (`USD`, `EUR`, `GBP`, `CAD`, `US-CA`, `EU-DE`, `UK-VAT`)
 - **Rate Limiting & Security**: Sliding Window Rate Limiter (`RateLimiter`, `RateLimitSubscriber`), 60 requests/min quota, `429 Too Many Requests` status, `X-RateLimit-*` headers
 - **Frontend UI & Templating**: Twig (`symfony/twig-bundle`), Glassmorphism CSS, Inter Typography
 - **ORM & Database**: Doctrine ORM 3.x with SQLite DBAL
@@ -59,26 +60,6 @@ Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 
 ---
 
-## Rate Limiting & Throttling
-
-All `/api/v1/*` endpoints are protected by a sliding window rate limiter enforcing a quota of **60 requests per minute** per Client IP or Bearer Token.
-
-Response headers returned on every API request:
-- `X-RateLimit-Limit`: Maximum requests allowed in the window (e.g. `60`)
-- `X-RateLimit-Remaining`: Remaining request quota in current window
-- `X-RateLimit-Reset`: Unix epoch timestamp when quota resets
-
-When quota is exceeded, the server returns `HTTP 429 Too Many Requests`:
-```json
-{
-  "error": "Too Many Requests",
-  "message": "API rate limit exceeded (60 requests/min). Please try again in 42 seconds.",
-  "retry_after": 42
-}
-```
-
----
-
 ## REST API & Web UI Documentation
 
 ### Web Dashboard & API Endpoints
@@ -94,9 +75,13 @@ When quota is exceeded, the server returns `HTTP 429 Too Many Requests`:
 | `GET` | `/api/v1/products` | Public / Viewer | Search & list products (supports `?q=`, `?category_id=`, `?status=`) |
 | `POST` | `/api/v1/products` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Create a new product |
 | `GET` | `/api/v1/products/{id}` | Public / Viewer | Get single product detail |
+| `GET` | `/api/v1/products/{id}/price` | Public / Viewer | Get product localized price & tax breakdown (`?currency=EUR&tax_zone=EU-DE`) |
 | `PUT` | `/api/v1/products/{id}` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Update product information |
 | `DELETE` | `/api/v1/products/{id}` | `ROLE_ADMIN` | Delete a product |
 | `POST` | `/api/v1/products/{id}/stock` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Record stock adjustment (`IN`, `OUT`, `ADJUST`) |
+| `GET` | `/api/v1/currencies` | Public / Viewer | List supported currency exchange rates |
+| `POST` | `/api/v1/currencies/update` | `ROLE_ADMIN` | Update or set currency exchange rate |
+| `GET` | `/api/v1/tax-zones` | Public / Viewer | List regional tax rate zones |
 | `GET` | `/api/v1/batch-lots` | Public / Viewer | List batch lots (filter `?product_id=`) |
 | `POST` | `/api/v1/batch-lots` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Create batch lot for a product |
 | `POST` | `/api/v1/batch-lots/fefo-fulfill` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Deduct stock using First Expired First Out (FEFO) strategy |
@@ -123,9 +108,9 @@ When quota is exceeded, the server returns `HTTP 429 Too Many Requests`:
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
+- **Multi-Currency & Tax Engine**: `CurrencyConverter` service converts USD base prices into foreign currencies (`USD`, `EUR`, `GBP`, `CAD`) and computes regional net and gross tax amounts (`US-CA`, `EU-DE`, `UK-VAT`).
 - **Rate Limiting Engine**: `RateLimiter` enforces a 60 requests/minute quota per client. `RateLimitSubscriber` intercepts Kernel requests to return HTTP `429` status codes and inject `X-RateLimit-*` headers.
 - **Operations Dashboard**: `DashboardController` gathers catalog valuation, stock health proportions, warehouse counts, pending PO counters, recent movement logs, and FEFO 30-day expiration alerts, rendering `dashboard/index.html.twig`.
-- **FEFO Allocation & Expiration Tracking**: `BatchLot` entity tracks manufacturing and expiration dates per lot. `BatchLotManager::allocateFefoStock()` automatically deducts inventory from the earliest expiring lots first.
 - **Continuous Integration**: Managed via GitHub Actions (`ci.yml`), validating Composer manifests, ORM entity mappings, and executing automated PHPUnit test suites on every commit.
 
 ---
@@ -142,7 +127,7 @@ php vendor/phpunit/phpunit/phpunit
 
 ## Data Handling & Privacy
 
-- **Data Collected**: Stores user accounts (hashed bcrypt passwords), product inventory metadata, category definitions, batch lots & expiration dates, warehouse facility locations, per-location stock levels, stock movement logs, supplier definitions, purchase orders, webhook subscriber URLs/secrets, and outbound alert delivery logs.
+- **Data Collected**: Stores user accounts (hashed bcrypt passwords), product inventory metadata, category definitions, batch lots & expiration dates, warehouse facility locations, per-location stock levels, stock movement logs, supplier definitions, purchase orders, currency exchange rates, tax zones, webhook subscriber URLs/secrets, and outbound alert delivery logs.
 - **Data Persistence**: All records persist locally in configured SQLite database files (`var/app.db`).
 - **Secrets & Keys**: Environment variables live in `.env` and are strictly excluded from git version control.
 
