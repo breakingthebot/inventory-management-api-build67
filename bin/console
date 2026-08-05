@@ -1,0 +1,21 @@
+#!/usr/bin/env php
+<?php
+
+// bin/console
+// Symfony console binary for CLI operations and Doctrine migrations.
+// Connects to: src/Kernel.php, vendor/autoload.php
+// Created: 2026-08-05
+
+use App\Kernel;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+
+if (!is_file(dirname(__DIR__).'/vendor/autoload_runtime.php')) {
+    throw new LogicException('Symfony Runtime is missing. Try running "composer require symfony/runtime".');
+}
+
+require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
+
+return function (array $context) {
+    $kernel = new Kernel($context['APP_ENV'], (bool) $context['APP_DEBUG']);
+    return new Application($kernel);
+};

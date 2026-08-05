@@ -1,0 +1,12 @@
+AGENTS.md
+BUILD_NOTES.md
+.env
+.env.local
+.env.*.local
+vendor/
+var/
+*.log
+.phpunit.result.cache
+.DS_Store
+.idea/
+.vscode/
