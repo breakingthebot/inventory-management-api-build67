@@ -5,21 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-08-05
+
+### Added
+- API Rate Limiting & Sliding Window Throttle subsystem (`RateLimiter` service & `RateLimitSubscriber`).
+- 60 requests per minute sliding window quota tracking per Client IP / Bearer Token payload.
+- HTTP `429 Too Many Requests` status code enforcement when client rate limits are exceeded.
+- Standard response header injection (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`).
+- Automated PHPUnit tests for rate limiter quota calculations, sliding window expiry, and 429 throttling (22 tests, 93 assertions passing).
+
 ## [1.8.0] - 2026-08-05
 
 ### Added
 - Interactive Operations Admin Dashboard UI (`DashboardController` rendering `dashboard/index.html.twig`).
 - Real-time catalog valuation calculation, stock status health breakdown progress bar, active warehouse metrics, and pending PO status counters.
 - Visual FEFO expiring lots alert panel (30-day window) and recent stock audit trail timeline feed.
-- Dark mode responsive glassmorphism UI theme styled with modern Inter typography.
-- Automated PHPUnit tests for `DashboardController` metric calculations and Twig view rendering (20 tests, 79 assertions passing).
 
 ## [1.7.0] - 2026-08-05
 
 ### Added
 - Stock Expiration & Lot/Batch Number Tracking architecture (`BatchLot` entity & `BatchLotRepository`).
 - First Expired, First Out (FEFO) stock allocation engine (`BatchLotManager::allocateFefoStock()`).
-- Expiration tracking queries and near-expiration alerting (`findExpiringLots()`).
 
 ## [1.6.0] - 2026-08-05
 

@@ -2,11 +2,12 @@
 
 [![Inventory Management API CI](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml/badge.svg)](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml)
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, API Rate Limiting & Sliding Window Throttling, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
+- **Rate Limiting & Security**: Sliding Window Rate Limiter (`RateLimiter`, `RateLimitSubscriber`), 60 requests/min quota, `429 Too Many Requests` status, `X-RateLimit-*` headers
 - **Frontend UI & Templating**: Twig (`symfony/twig-bundle`), Glassmorphism CSS, Inter Typography
 - **ORM & Database**: Doctrine ORM 3.x with SQLite DBAL
 - **Batch & FEFO Engine**: `BatchLot` entity, `BatchLotRepository` (FEFO queries), and `BatchLotManager`
@@ -58,6 +59,26 @@ Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 
 ---
 
+## Rate Limiting & Throttling
+
+All `/api/v1/*` endpoints are protected by a sliding window rate limiter enforcing a quota of **60 requests per minute** per Client IP or Bearer Token.
+
+Response headers returned on every API request:
+- `X-RateLimit-Limit`: Maximum requests allowed in the window (e.g. `60`)
+- `X-RateLimit-Remaining`: Remaining request quota in current window
+- `X-RateLimit-Reset`: Unix epoch timestamp when quota resets
+
+When quota is exceeded, the server returns `HTTP 429 Too Many Requests`:
+```json
+{
+  "error": "Too Many Requests",
+  "message": "API rate limit exceeded (60 requests/min). Please try again in 42 seconds.",
+  "retry_after": 42
+}
+```
+
+---
+
 ## REST API & Web UI Documentation
 
 ### Web Dashboard & API Endpoints
@@ -102,6 +123,7 @@ Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
+- **Rate Limiting Engine**: `RateLimiter` enforces a 60 requests/minute quota per client. `RateLimitSubscriber` intercepts Kernel requests to return HTTP `429` status codes and inject `X-RateLimit-*` headers.
 - **Operations Dashboard**: `DashboardController` gathers catalog valuation, stock health proportions, warehouse counts, pending PO counters, recent movement logs, and FEFO 30-day expiration alerts, rendering `dashboard/index.html.twig`.
 - **FEFO Allocation & Expiration Tracking**: `BatchLot` entity tracks manufacturing and expiration dates per lot. `BatchLotManager::allocateFefoStock()` automatically deducts inventory from the earliest expiring lots first.
 - **Continuous Integration**: Managed via GitHub Actions (`ci.yml`), validating Composer manifests, ORM entity mappings, and executing automated PHPUnit test suites on every commit.
