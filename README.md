@@ -2,12 +2,13 @@
 
 [![Inventory Management API CI](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml/badge.svg)](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml)
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
 - **ORM & Database**: Doctrine ORM 3.x with SQLite DBAL
+- **Batch & FEFO Engine**: `BatchLot` entity, `BatchLotRepository` (FEFO queries), and `BatchLotManager`
 - **Continuous Integration**: GitHub Actions CI (`.github/workflows/ci.yml`)
 - **Automated PO System**: `Supplier`, `PurchaseOrder`, `PurchaseOrderItem`, `PurchaseOrderGenerator`, and `ReorderEventSubscriber`
 - **Authentication & RBAC**: `User` entity, `TokenAuthenticator` service, Bearer Token authorization (`ROLE_ADMIN`, `ROLE_WAREHOUSE`, `ROLE_VIEWER`)
@@ -55,30 +56,9 @@ Access the API in your browser or HTTP client at: `http://127.0.0.1:8000/api/v1/
 
 ---
 
-## Continuous Integration (CI/CD)
-
-The project includes an automated GitHub Actions CI pipeline defined in `.github/workflows/ci.yml`. On every push and pull request to `main`, GitHub Actions automatically:
-- Validates `composer.json` format (`composer validate --strict`).
-- Validates Doctrine ORM entity mapping syntax (`php bin/console doctrine:schema:validate --skip-sync`).
-- Executes the full 18-test PHPUnit test suite (`php vendor/phpunit/phpunit/phpunit`).
-
----
-
-## Seeded User Credentials (RBAC Roles)
-
-The API automatically provisions default accounts for testing:
-
-| Role | Email | Password | Permissions |
-| --- | --- | --- | --- |
-| **Admin** | `admin@inventory.internal` | `AdminPass123!` | Full site management, product/category CRUD, warehouse management, PO management, webhooks, imports. |
-| **Warehouse** | `warehouse@inventory.internal` | `WorkerPass123!` | Product updates, stock adjustments, inter-warehouse transfers, PO receiving, CSV bulk imports. |
-| **Viewer** | `auditor@inventory.internal` | `AuditorPass123!` | Read-only access to all API GET endpoints. |
-
----
-
 ## REST API Documentation
 
-### Auth, Inventory & PO Endpoints
+### Auth, Inventory, PO & FEFO Endpoints
 
 | Method | Endpoint | Authorization | Description |
 | --- | --- | --- | --- |
@@ -93,6 +73,10 @@ The API automatically provisions default accounts for testing:
 | `PUT` | `/api/v1/products/{id}` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Update product information |
 | `DELETE` | `/api/v1/products/{id}` | `ROLE_ADMIN` | Delete a product |
 | `POST` | `/api/v1/products/{id}/stock` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Record stock adjustment (`IN`, `OUT`, `ADJUST`) |
+| `GET` | `/api/v1/batch-lots` | Public / Viewer | List batch lots (filter `?product_id=`) |
+| `POST` | `/api/v1/batch-lots` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Create batch lot for a product |
+| `POST` | `/api/v1/batch-lots/fefo-fulfill` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Deduct stock using First Expired First Out (FEFO) strategy |
+| `GET` | `/api/v1/batch-lots/expiring` | Public / Viewer | Get near-expiration batch lots report (`?days=30`) |
 | `GET` | `/api/v1/suppliers` | Public / Viewer | List vendor suppliers |
 | `POST` | `/api/v1/suppliers` | `ROLE_ADMIN` | Register a new supplier |
 | `GET` | `/api/v1/purchase-orders` | Public / Viewer | List Purchase Orders (filter `?status=`) |
@@ -115,10 +99,10 @@ The API automatically provisions default accounts for testing:
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
+- **FEFO Allocation & Expiration Tracking**: `BatchLot` entity tracks manufacturing and expiration dates per lot. `BatchLotManager::allocateFefoStock()` automatically deducts inventory from the earliest expiring lots first.
 - **Continuous Integration**: Managed via GitHub Actions (`ci.yml`), validating Composer manifests, ORM entity mappings, and executing automated PHPUnit test suites on every commit.
 - **Automated PO Reordering**: When stock deductions transition items into `LOW_STOCK`, `ReorderEventSubscriber` invokes `PurchaseOrderGenerator` to calculate reorder quantities `max(10, (minStockLevel * 2) - currentStock)` and creates or appends line items to `DRAFT` Purchase Orders.
 - **Goods Receiving Engine**: Receiving PO shipments (`POST /api/v1/purchase-orders/{id}/receive`) automatically updates PO status to `RECEIVED` and invokes `StockManager` or `WarehouseManager` to restock physical inventory.
-- **Security & RBAC**: `User` entity implementing `UserInterface` and `PasswordAuthenticatedUserInterface`. `TokenAuthenticator` generates and validates HMAC-signed Bearer tokens (`Authorization: Bearer <token>`).
 
 ---
 
@@ -134,7 +118,7 @@ php vendor/phpunit/phpunit/phpunit
 
 ## Data Handling & Privacy
 
-- **Data Collected**: Stores user accounts (hashed bcrypt passwords), product inventory metadata, category definitions, warehouse facility locations, per-location stock levels, stock movement logs, supplier definitions, purchase orders, webhook subscriber URLs/secrets, and outbound alert delivery logs.
+- **Data Collected**: Stores user accounts (hashed bcrypt passwords), product inventory metadata, category definitions, batch lots & expiration dates, warehouse facility locations, per-location stock levels, stock movement logs, supplier definitions, purchase orders, webhook subscriber URLs/secrets, and outbound alert delivery logs.
 - **Data Persistence**: All records persist locally in configured SQLite database files (`var/app.db`).
 - **Secrets & Keys**: Environment variables live in `.env` and are strictly excluded from git version control.
 
