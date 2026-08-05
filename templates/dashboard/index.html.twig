@@ -1,0 +1,119 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard — Inventory Management System{% endblock %}
+
+{% block body %}
+<div style="display: flex; flex-direction: column; gap: 32px;">
+    <!-- Page Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <h1 style="margin: 0; font-size: 2rem; font-weight: 700; letter-spacing: -0.025em;">Operations Dashboard</h1>
+            <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 0.95rem;">Real-time stock valuation, FEFO expiration alerts, and order activity.</p>
+        </div>
+        <div>
+            <span class="badge badge-success" style="padding: 6px 14px; font-size: 0.8rem;">● Live System Operational</span>
+        </div>
+    </div>
+
+    <!-- Stat Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+        <!-- Card 1: Total Valuation -->
+        <div class="glass-panel" style="padding: 24px;">
+            <div style="color: #94a3b8; font-size: 0.85rem; font-weight: 500;">TOTAL CATALOG VALUATION</div>
+            <div style="font-size: 1.85rem; font-weight: 700; margin-top: 8px; color: #38bdf8;">${{ total_valuation|number_format(2, '.', ',') }}</div>
+            <div style="color: #64748b; font-size: 0.8rem; margin-top: 6px;">Across {{ total_products }} active SKUs</div>
+        </div>
+
+        <!-- Card 2: Stock Breakdown -->
+        <div class="glass-panel" style="padding: 24px;">
+            <div style="color: #94a3b8; font-size: 0.85rem; font-weight: 500;">STOCK HEALTH BREAKDOWN</div>
+            <div style="display: flex; gap: 12px; margin-top: 12px; font-size: 0.9rem; font-weight: 600;">
+                <span style="color: #4ade80;">{{ in_stock }} In Stock</span>
+                <span style="color: #facc15;">{{ low_stock }} Low</span>
+                <span style="color: #f87171;">{{ out_of_stock }} Out</span>
+            </div>
+            <!-- Progress Bar -->
+            {% set total = total_products > 0 ? total_products : 1 %}
+            <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 999px; margin-top: 12px; overflow: hidden; display: flex;">
+                <div style="width: {{ (in_stock / total * 100)|round }}%; background: #4ade80;"></div>
+                <div style="width: {{ (low_stock / total * 100)|round }}%; background: #facc15;"></div>
+                <div style="width: {{ (out_of_stock / total * 100)|round }}%; background: #f87171;"></div>
+            </div>
+        </div>
+
+        <!-- Card 3: Physical Warehouses -->
+        <div class="glass-panel" style="padding: 24px;">
+            <div style="color: #94a3b8; font-size: 0.85rem; font-weight: 500;">ACTIVE WAREHOUSES</div>
+            <div style="font-size: 1.85rem; font-weight: 700; margin-top: 8px; color: #a855f7;">{{ active_warehouses }} Locations</div>
+            <div style="color: #64748b; font-size: 0.8rem; margin-top: 6px;">Multi-warehouse stock aggregation</div>
+        </div>
+
+        <!-- Card 4: Pending POs -->
+        <div class="glass-panel" style="padding: 24px;">
+            <div style="color: #94a3b8; font-size: 0.85rem; font-weight: 500;">PENDING PURCHASE ORDERS</div>
+            <div style="font-size: 1.85rem; font-weight: 700; margin-top: 8px; color: #facc15;">{{ pending_pos }} Orders</div>
+            <div style="color: #64748b; font-size: 0.8rem; margin-top: 6px;">Drafts & Submitted supplier reorders</div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 24px;">
+        <!-- Left: Recent Stock Movements Audit Feed -->
+        <div class="glass-panel" style="padding: 24px;">
+            <h2 style="margin: 0 0 20px 0; font-size: 1.1rem; font-weight: 600;">Recent Stock Audit Trail</h2>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                {% if recent_movements is empty %}
+                    <p style="color: #64748b; font-size: 0.9rem;">No stock movements recorded yet.</p>
+                {% else %}
+                    {% for m in recent_movements %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">
+                                    {% if m.type == 'IN' %}
+                                        <span style="color: #4ade80;">+{{ m.quantity }} IN</span>
+                                    {% elseif m.type == 'OUT' %}
+                                        <span style="color: #f87171;">-{{ m.quantity }} OUT</span>
+                                    {% else %}
+                                        <span style="color: #38bdf8;">ADJUST ({{ m.quantity }})</span>
+                                    {% endif %}
+                                    &bull; <span style="color: #f1f5f9;">{{ m.product.name }}</span>
+                                </div>
+                                <div style="color: #64748b; font-size: 0.8rem; margin-top: 4px;">{{ m.reason ?? 'General movement' }} (Ref: {{ m.reference ?? 'N/A' }})</div>
+                            </div>
+                            <div style="color: #94a3b8; font-size: 0.75rem;">
+                                {{ m.createdAt|date('M d, H:i') }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right: Near-Expiration Lots Alert Box -->
+        <div class="glass-panel" style="padding: 24px;">
+            <h2 style="margin: 0 0 20px 0; font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                <span style="color: #f87171;">⚠</span> FEFO Expiring Lots (30 Days)
+            </h2>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                {% if expiring_lots is empty %}
+                    <div style="padding: 16px; background: rgba(34, 197, 94, 0.1); border-radius: 10px; border: 1px solid rgba(34, 197, 94, 0.2); color: #4ade80; font-size: 0.85rem;">
+                        ✓ No batch lots expiring within the next 30 days.
+                    </div>
+                {% else %}
+                    {% for lot in expiring_lots %}
+                        <div style="padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 10px; border: 1px solid rgba(239, 68, 68, 0.2); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.85rem; color: #f87171;">{{ lot.batchNumber }}</div>
+                                <div style="color: #cbd5e1; font-size: 0.8rem; margin-top: 2px;">{{ lot.product.name }} &bull; {{ lot.quantity }} units</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="badge badge-danger">{{ lot.expirationDate|date('M d, Y') }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

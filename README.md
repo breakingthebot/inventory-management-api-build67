@@ -2,11 +2,12 @@
 
 [![Inventory Management API CI](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml/badge.svg)](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml)
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
+- **Frontend UI & Templating**: Twig (`symfony/twig-bundle`), Glassmorphism CSS, Inter Typography
 - **ORM & Database**: Doctrine ORM 3.x with SQLite DBAL
 - **Batch & FEFO Engine**: `BatchLot` entity, `BatchLotRepository` (FEFO queries), and `BatchLotManager`
 - **Continuous Integration**: GitHub Actions CI (`.github/workflows/ci.yml`)
@@ -52,16 +53,18 @@ php vendor/phpunit/phpunit/phpunit
 php -S 127.0.0.1:8000 -t public
 ```
 
-Access the API in your browser or HTTP client at: `http://127.0.0.1:8000/api/v1/health`
+Access the Web Dashboard in your browser: `http://127.0.0.1:8000/admin/dashboard`  
+Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 
 ---
 
-## REST API Documentation
+## REST API & Web UI Documentation
 
-### Auth, Inventory, PO & FEFO Endpoints
+### Web Dashboard & API Endpoints
 
 | Method | Endpoint | Authorization | Description |
 | --- | --- | --- | --- |
+| `GET` | `/admin/dashboard` | Web Browser | Interactive Admin Dashboard UI with metrics & FEFO alerts |
 | `POST` | `/api/v1/auth/login` | Public | Authenticate user and receive Bearer token |
 | `GET` | `/api/v1/auth/me` | Bearer Token | View active authenticated user profile |
 | `GET` | `/api/v1/health` | Public | Health check & diagnostic status |
@@ -99,10 +102,9 @@ Access the API in your browser or HTTP client at: `http://127.0.0.1:8000/api/v1/
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
+- **Operations Dashboard**: `DashboardController` gathers catalog valuation, stock health proportions, warehouse counts, pending PO counters, recent movement logs, and FEFO 30-day expiration alerts, rendering `dashboard/index.html.twig`.
 - **FEFO Allocation & Expiration Tracking**: `BatchLot` entity tracks manufacturing and expiration dates per lot. `BatchLotManager::allocateFefoStock()` automatically deducts inventory from the earliest expiring lots first.
 - **Continuous Integration**: Managed via GitHub Actions (`ci.yml`), validating Composer manifests, ORM entity mappings, and executing automated PHPUnit test suites on every commit.
-- **Automated PO Reordering**: When stock deductions transition items into `LOW_STOCK`, `ReorderEventSubscriber` invokes `PurchaseOrderGenerator` to calculate reorder quantities `max(10, (minStockLevel * 2) - currentStock)` and creates or appends line items to `DRAFT` Purchase Orders.
-- **Goods Receiving Engine**: Receiving PO shipments (`POST /api/v1/purchase-orders/{id}/receive`) automatically updates PO status to `RECEIVED` and invokes `StockManager` or `WarehouseManager` to restock physical inventory.
 
 ---
 
