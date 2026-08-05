@@ -1,11 +1,14 @@
 # Inventory Management API — Symfony & Doctrine ORM
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+[![Inventory Management API CI](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml/badge.svg)](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml)
+
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
 - **ORM & Database**: Doctrine ORM 3.x with SQLite DBAL
+- **Continuous Integration**: GitHub Actions CI (`.github/workflows/ci.yml`)
 - **Automated PO System**: `Supplier`, `PurchaseOrder`, `PurchaseOrderItem`, `PurchaseOrderGenerator`, and `ReorderEventSubscriber`
 - **Authentication & RBAC**: `User` entity, `TokenAuthenticator` service, Bearer Token authorization (`ROLE_ADMIN`, `ROLE_WAREHOUSE`, `ROLE_VIEWER`)
 - **Bulk Data Processing**: Streaming CSV Importer (`CsvBatchImporter`) & CSV Exporter (`CsvExporter`)
@@ -49,6 +52,15 @@ php -S 127.0.0.1:8000 -t public
 ```
 
 Access the API in your browser or HTTP client at: `http://127.0.0.1:8000/api/v1/health`
+
+---
+
+## Continuous Integration (CI/CD)
+
+The project includes an automated GitHub Actions CI pipeline defined in `.github/workflows/ci.yml`. On every push and pull request to `main`, GitHub Actions automatically:
+- Validates `composer.json` format (`composer validate --strict`).
+- Validates Doctrine ORM entity mapping syntax (`php bin/console doctrine:schema:validate --skip-sync`).
+- Executes the full 18-test PHPUnit test suite (`php vendor/phpunit/phpunit/phpunit`).
 
 ---
 
@@ -103,6 +115,7 @@ The API automatically provisions default accounts for testing:
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
+- **Continuous Integration**: Managed via GitHub Actions (`ci.yml`), validating Composer manifests, ORM entity mappings, and executing automated PHPUnit test suites on every commit.
 - **Automated PO Reordering**: When stock deductions transition items into `LOW_STOCK`, `ReorderEventSubscriber` invokes `PurchaseOrderGenerator` to calculate reorder quantities `max(10, (minStockLevel * 2) - currentStock)` and creates or appends line items to `DRAFT` Purchase Orders.
 - **Goods Receiving Engine**: Receiving PO shipments (`POST /api/v1/purchase-orders/{id}/receive`) automatically updates PO status to `RECEIVED` and invokes `StockManager` or `WarehouseManager` to restock physical inventory.
 - **Security & RBAC**: `User` entity implementing `UserInterface` and `PasswordAuthenticatedUserInterface`. `TokenAuthenticator` generates and validates HMAC-signed Bearer tokens (`Authorization: Bearer <token>`).

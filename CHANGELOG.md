@@ -5,16 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-08-05
+
+### Added
+- GitHub Actions CI Continuous Integration workflow (`.github/workflows/ci.yml`).
+- Automated CI pipeline running `composer validate --strict`, `doctrine:schema:validate`, and full 18-test PHPUnit execution on every git push and pull request.
+- CI status badge and CI build instructions in `README.md`.
+
 ## [1.5.0] - 2026-08-05
 
 ### Added
 - Automated Purchase Order Reordering Subsystem (`Supplier`, `PurchaseOrder`, and `PurchaseOrderItem` entities).
 - Event-driven Purchase Order draft generation (`ReorderEventSubscriber` listening to `LowStockEvent`).
 - Dynamic reorder quantity formula `max(10, (minStockLevel * 2) - currentStock)`.
-- Goods receiving engine (`PurchaseOrderGenerator::receiveGoods()`) automatically updating PO status to `RECEIVED` and adding received stock into inventory.
-- REST API Supplier management endpoints (`GET/POST /api/v1/suppliers`).
-- REST API Purchase Order endpoints (`GET /api/v1/purchase-orders`, `GET /api/v1/purchase-orders/{id}`, `POST /api/v1/purchase-orders/{id}/receive`).
-- Automated PHPUnit tests for PO reorder calculations, draft generation, and receiving shipments (18 tests, 67 assertions passing).
+- Goods receiving engine (`PurchaseOrderGenerator::receiveGoods()`).
 
 ## [1.4.0] - 2026-08-05
 
@@ -22,7 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - User authentication and Security entity (`User` implementing `UserInterface` & `PasswordAuthenticatedUserInterface`).
 - Bearer token authentication engine (`TokenAuthenticator`) issuing signed token payloads.
 - Role-Based Access Control (RBAC) enforcing permissions for `ROLE_ADMIN`, `ROLE_WAREHOUSE`, and `ROLE_VIEWER`.
-- REST API Auth Endpoints (`POST /api/v1/auth/login` and `GET /api/v1/auth/me`).
 
 ## [1.3.0] - 2026-08-05
 
