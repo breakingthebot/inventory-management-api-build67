@@ -1,11 +1,13 @@
 # Inventory Management API — Symfony & Doctrine ORM
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, automatic stock status recalculation, input validation, serialization group contexts, stock movement audit logging, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
 - **ORM & Database**: Doctrine ORM 3.x with SQLite DBAL
+- **Event Management**: Symfony EventDispatcher (`LowStockEvent`, `LowStockSubscriber`)
+- **Security & Webhooks**: Outbound HTTP Webhooks signed with HMAC-SHA256
 - **Validation**: Symfony Validator
 - **Serializer**: Symfony Serializer (Group contexts)
 - **Testing**: PHPUnit 10.5
@@ -32,8 +34,8 @@ composer install
 # 3. Copy environment configuration
 cp .env.example .env
 
-# 4. Create SQLite database schema
-php bin/console doctrine:schema:create
+# 4. Create / update SQLite database schema
+php bin/console doctrine:schema:update --force
 
 # 5. Run automated PHPUnit test suite
 php vendor/phpunit/phpunit/phpunit
@@ -46,21 +48,9 @@ Access the API in your browser or HTTP client at: `http://127.0.0.1:8000/api/v1/
 
 ---
 
-## Environment Variables
-
-Refer to `.env.example`:
-
-| Variable | Description | Default / Example |
-| --- | --- | --- |
-| `APP_ENV` | Application environment (`dev`, `prod`, `test`) | `dev` |
-| `APP_SECRET` | Secret key for hashing & tokens | `216bc920253457ad76e4c76b9f29...` |
-| `DATABASE_URL` | SQLite database connection string | `sqlite:///%kernel.project_dir%/var/app.db` |
-
----
-
 ## REST API Documentation
 
-### Public Endpoints
+### Core Endpoints
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
@@ -75,6 +65,10 @@ Refer to `.env.example`:
 | `DELETE` | `/api/v1/products/{id}` | Delete a product |
 | `POST` | `/api/v1/products/{id}/stock` | Record stock adjustment (`IN`, `OUT`, `ADJUST`) |
 | `GET` | `/api/v1/products/{id}/stock-movements` | Retrieve stock audit history for a product |
+| `GET` | `/api/v1/webhooks/subscriptions` | List active webhook subscribers |
+| `POST` | `/api/v1/webhooks/subscriptions` | Register new webhook subscriber URL |
+| `DELETE` | `/api/v1/webhooks/subscriptions/{id}` | Delete a webhook subscription |
+| `GET` | `/api/v1/notifications/logs` | Inspect outbound notification & webhook logs |
 
 ---
 
@@ -82,9 +76,9 @@ Refer to `.env.example`:
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
-- **Domain Entities**: `Product`, `Category`, and `StockMovement` encapsulate data structures and domain rules. `Product` features lifecycle recalculations that automatically mark items as `IN_STOCK`, `LOW_STOCK` (when stock <= `minStockLevel`), or `OUT_OF_STOCK` (when stock = 0).
-- **Service Layer**: `StockManager` coordinates atomic stock transactions. When a stock movement occurs, it validates quantity constraints (e.g. preventing negative inventory levels on sales), updates product quantities, logs a detailed `StockMovement` entry, and commits the unit of work in a single transaction.
-- **Serialization & Validation**: API endpoints use Symfony Serializer group contexts (`product:read`, `product:detail`, `category:read`, `movement:read`) to return clean JSON without circular references, while Symfony Validator enforces SKU uniqueness and boundary rules at the boundary.
+- **Domain Entities**: `Product`, `Category`, `StockMovement`, `WebhookSubscription`, and `NotificationLog`. `Product` features lifecycle recalculations that automatically mark items as `IN_STOCK`, `LOW_STOCK` (when stock <= `minStockLevel`), or `OUT_OF_STOCK` (when stock = 0).
+- **Service & Event Layer**: `StockManager` coordinates atomic stock transactions. When a stock movement transitions a product into `LOW_STOCK` or `OUT_OF_STOCK`, it dispatches a `LowStockEvent`.
+- **Notification & Webhook Pipeline**: `LowStockSubscriber` listens to `LowStockEvent` and triggers `NotificationService`, sending formatted alert emails and HMAC-SHA256 signed Webhooks (`X-Inventory-Signature`) to external subscribers, while saving audit logs in `notification_logs`.
 
 ---
 
@@ -100,7 +94,7 @@ php vendor/phpunit/phpunit/phpunit
 
 ## Data Handling & Privacy
 
-- **Data Collected**: Stores product inventory metadata (SKUs, names, descriptions, unit prices, minimum stock thresholds), category definitions, and stock movement logs (transaction type, quantity, reason, reference).
+- **Data Collected**: Stores product inventory metadata, category definitions, stock movement logs, webhook subscriber URLs/secrets, and outbound alert delivery logs.
 - **Data Persistence**: All records persist locally in configured SQLite database files (`var/app.db`).
 - **Secrets & Keys**: Environment variables live in `.env` and are strictly excluded from git version control.
 

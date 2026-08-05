@@ -1,27 +1,31 @@
 <?php
 
 // tests/Service/StockManagerTest.php
-// Unit tests for StockManager service verifying stock transactions, boundary rules, and exception handling.
-// Connects to: src/Service/StockManager.php, src/Entity/Product.php, src/Entity/StockMovement.php
+// Unit tests for StockManager service verifying stock transactions, boundary rules, and LowStockEvent dispatching.
+// Connects to: src/Service/StockManager.php, src/Entity/Product.php, src/Entity/StockMovement.php, src/Event/LowStockEvent.php
 // Created: 2026-08-05
 
 namespace App\Tests\Service;
 
 use App\Entity\Product;
 use App\Entity\StockMovement;
+use App\Event\LowStockEvent;
 use App\Service\StockManager;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class StockManagerTest extends TestCase
 {
     private EntityManagerInterface $entityManager;
+    private EventDispatcherInterface $eventDispatcher;
     private StockManager $stockManager;
 
     protected function setUp(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
-        $this->stockManager = new StockManager($this->entityManager);
+        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
+        $this->stockManager = new StockManager($this->entityManager, $this->eventDispatcher);
     }
 
     public function testRecordStockIn(): void
@@ -43,7 +47,7 @@ class StockManagerTest extends TestCase
         $this->assertEquals(20, $movement->getResultingStock());
     }
 
-    public function testRecordStockOut(): void
+    public function testRecordStockOutDispatchesLowStockEvent(): void
     {
         $product = new Product();
         $product->setSku('TEST-002');
@@ -52,6 +56,9 @@ class StockManagerTest extends TestCase
         $product->setMinStockLevel(10);
 
         $this->entityManager->expects($this->exactly(2))->method('persist');
+        $this->eventDispatcher->expects($this->once())
+            ->method('dispatch')
+            ->with($this->isInstanceOf(LowStockEvent::class), LowStockEvent::NAME);
 
         $movement = $this->stockManager->recordMovement($product, StockMovement::TYPE_OUT, 12, 'Customer order #101');
 

@@ -1,20 +1,23 @@
 <?php
 
 // src/Service/StockManager.php
-// Business logic service managing atomic stock movements, status recalculation, and audit logging.
-// Connects to: src/Entity/Product.php, src/Entity/StockMovement.php, Doctrine EntityManagerInterface
+// Business logic service managing atomic stock movements, status recalculation, audit logging, and LowStockEvent dispatch.
+// Connects to: src/Entity/Product.php, src/Entity/StockMovement.php, src/Event/LowStockEvent.php
 // Created: 2026-08-05
 
 namespace App\Service;
 
 use App\Entity\Product;
 use App\Entity\StockMovement;
+use App\Event\LowStockEvent;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class StockManager
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly ?EventDispatcherInterface $eventDispatcher = null
     ) {
     }
 
@@ -39,6 +42,7 @@ class StockManager
             throw new \InvalidArgumentException('Quantity for IN or OUT movements must be greater than 0.');
         }
 
+        $previousStatus = $product->getStatus();
         $currentStock = $product->getStockQuantity();
         $newStock = $currentStock;
 
@@ -58,6 +62,7 @@ class StockManager
         }
 
         $product->setStockQuantity($newStock);
+        $currentStatus = $product->getStatus();
 
         $movement = new StockMovement();
         $movement->setProduct($product);
@@ -70,6 +75,18 @@ class StockManager
         $this->entityManager->persist($product);
         $this->entityManager->persist($movement);
         $this->entityManager->flush();
+
+        // Dispatch LowStockEvent if status transitioned into LOW_STOCK or OUT_OF_STOCK
+        if (
+            $this->eventDispatcher !== null &&
+            in_array($currentStatus, [Product::STATUS_LOW_STOCK, Product::STATUS_OUT_OF_STOCK], true) &&
+            $previousStatus !== $currentStatus
+        ) {
+            $this->eventDispatcher->dispatch(
+                new LowStockEvent($product, $previousStatus, $currentStatus),
+                LowStockEvent::NAME
+            );
+        }
 
         return $movement;
     }
