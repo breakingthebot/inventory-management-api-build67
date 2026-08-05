@@ -2,11 +2,12 @@
 
 [![Inventory Management API CI](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml/badge.svg)](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml)
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Webhook Failure Retry Queue & Circuit Breaker, Automated Inventory Audit Sampling & Stock Reconciliation, Multi-Currency Conversions (`USD`, `EUR`, `GBP`, `CAD`), Regional Tax Rate Matrix (`US-CA`, `EU-DE`, `UK-VAT`), API Rate Limiting & Sliding Window Throttling, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, E-Commerce Stock Reservation Engine (TTL Cart Holds & Oversell Prevention), Webhook Failure Retry Queue & Circuit Breaker, Automated Inventory Audit Sampling & Stock Reconciliation, Multi-Currency Conversions (`USD`, `EUR`, `GBP`, `CAD`), Regional Tax Rate Matrix (`US-CA`, `EU-DE`, `UK-VAT`), API Rate Limiting & Sliding Window Throttling, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
+- **Stock Reservation Engine**: `StockReservation`, `StockReservationEngine` (15-min TTL cart holds, $Available = Physical - Held$ math)
 - **Webhook Retry & Circuit Breaker**: `WebhookRetryQueue`, `WebhookRetryEngine` ($10 \times 2^{n-1}$ exponential backoff, circuit breaker trip at 5 failures)
 - **Inventory Audit Engine**: `AuditCycle`, `AuditDiscrepancy`, `AuditManager` (random sampling & count reconciliations)
 - **Multi-Currency & Tax Engine**: `CurrencyRate`, `TaxZone`, `CurrencyConverter` (`USD`, `EUR`, `GBP`, `CAD`, `US-CA`, `EU-DE`, `UK-VAT`)
@@ -81,6 +82,10 @@ Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 | `PUT` | `/api/v1/products/{id}` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Update product information |
 | `DELETE` | `/api/v1/products/{id}` | `ROLE_ADMIN` | Delete a product |
 | `POST` | `/api/v1/products/{id}/stock` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Record stock adjustment (`IN`, `OUT`, `ADJUST`) |
+| `POST` | `/api/v1/reservations` | Public | Reserve stock for 15-min shopping cart checkout hold |
+| `GET` | `/api/v1/reservations/{token}` | Public | Inspect reservation status & remaining TTL |
+| `POST` | `/api/v1/reservations/{token}/confirm` | Public | Confirm checkout reservation and deduct physical inventory |
+| `POST` | `/api/v1/reservations/{token}/cancel` | Public | Manually release held stock reservation |
 | `GET` | `/api/v1/webhooks/subscriptions` | Public / Viewer | List active webhook subscribers |
 | `POST` | `/api/v1/webhooks/subscriptions` | `ROLE_ADMIN` | Register new webhook subscriber URL |
 | `GET` | `/api/v1/webhooks/retries` | Public / Viewer | List webhook retry queue items |
@@ -116,10 +121,10 @@ Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
+- **Stock Reservation Engine**: `StockReservationEngine` calculates available unreserved stock ($Available = Physical - Held$) and holds cart items for 15-minute checkout windows before confirming or purging expired holds.
 - **Webhook Retry & Circuit Breaker**: `WebhookRetryEngine` calculates exponential backoff ($10 \times 2^{n-1}$ s) and deactivates subscriptions after 5 consecutive failures.
 - **Inventory Audit Engine**: `AuditManager::createAuditCycle()` generates random product sampling lists for physical count verification. Submitting counts via `reconcileAuditCycle()` posts `ADJUST` stock movements for variance items.
 - **Multi-Currency & Tax Engine**: `CurrencyConverter` service converts USD base prices into foreign currencies (`USD`, `EUR`, `GBP`, `CAD`) and computes regional net and gross tax amounts (`US-CA`, `EU-DE`, `UK-VAT`).
-- **Rate Limiting Engine**: `RateLimiter` enforces a 60 requests/minute quota per client. `RateLimitSubscriber` intercepts Kernel requests to return HTTP `429` status codes and inject `X-RateLimit-*` headers.
 
 ---
 
@@ -135,7 +140,7 @@ php vendor/phpunit/phpunit/phpunit
 
 ## Data Handling & Privacy
 
-- **Data Collected**: Stores user accounts (hashed bcrypt passwords), product inventory metadata, category definitions, batch lots & expiration dates, warehouse facility locations, per-location stock levels, stock movement logs, supplier definitions, purchase orders, audit cycles & count discrepancies, webhook retry queue entries, currency exchange rates, tax zones, webhook subscriber URLs/secrets, and outbound alert delivery logs.
+- **Data Collected**: Stores user accounts (hashed bcrypt passwords), product inventory metadata, category definitions, batch lots & expiration dates, warehouse facility locations, per-location stock levels, stock movement logs, supplier definitions, purchase orders, audit cycles & count discrepancies, stock reservations & TTL tokens, webhook retry queue entries, currency exchange rates, tax zones, webhook subscriber URLs/secrets, and outbound alert delivery logs.
 - **Data Persistence**: All records persist locally in configured SQLite database files (`var/app.db`).
 - **Secrets & Keys**: Environment variables live in `.env` and are strictly excluded from git version control.
 
