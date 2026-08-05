@@ -1,11 +1,12 @@
 # Inventory Management API — Symfony & Doctrine ORM
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, multi-warehouse location tracking, inter-warehouse stock transfers, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import and export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
 - **ORM & Database**: Doctrine ORM 3.x with SQLite DBAL
+- **Bulk Data Processing**: Streaming CSV Importer (`CsvBatchImporter`) with multi-row validation error aggregation & CSV Exporter (`CsvExporter`)
 - **Multi-Warehouse**: Per-location stock tracking (`Warehouse`, `WarehouseStock`) & stock transfers
 - **Event Management**: Symfony EventDispatcher (`LowStockEvent`, `LowStockSubscriber`)
 - **Security & Webhooks**: Outbound HTTP Webhooks signed with HMAC-SHA256
@@ -64,6 +65,9 @@ Access the API in your browser or HTTP client at: `http://127.0.0.1:8000/api/v1/
 | `PUT` | `/api/v1/products/{id}` | Update product information |
 | `DELETE` | `/api/v1/products/{id}` | Delete a product |
 | `POST` | `/api/v1/products/{id}/stock` | Record stock adjustment (`IN`, `OUT`, `ADJUST`) |
+| `POST` | `/api/v1/products/import/csv` | Bulk import products from CSV spreadsheet |
+| `GET` | `/api/v1/products/export/csv` | Download CSV catalog export of products |
+| `GET` | `/api/v1/stock-movements/export/csv` | Download CSV audit log of stock movements |
 | `GET` | `/api/v1/warehouses` | List all physical warehouses |
 | `POST` | `/api/v1/warehouses` | Create a new warehouse facility |
 | `GET` | `/api/v1/warehouses/{id}` | Get warehouse details and stock inventory |
@@ -81,8 +85,8 @@ Access the API in your browser or HTTP client at: `http://127.0.0.1:8000/api/v1/
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
 - **Domain Entities**: `Product`, `Category`, `Warehouse`, `WarehouseStock`, `StockMovement`, `WebhookSubscription`, and `NotificationLog`.
-- **Multi-Warehouse Management**: `WarehouseManager` coordinates per-location stock tracking (`WarehouseStock`) and executes inter-warehouse transfers (`transferStock()`). It automatically calculates global stock sums across all warehouses and updates global product status without requiring manual background cron jobs.
-- **Service & Event Layer**: `StockManager` coordinates global stock transactions. When a stock movement transitions a product into `LOW_STOCK` or `OUT_OF_STOCK`, it dispatches a `LowStockEvent`.
+- **Bulk CSV Importer**: `CsvBatchImporter` parses CSV streams row by row, validating each record against domain constraints. Invalid rows are recorded in a detailed error summary report, ensuring valid records are safely committed without abandoning the batch.
+- **Multi-Warehouse Management**: `WarehouseManager` coordinates per-location stock tracking (`WarehouseStock`) and executes inter-warehouse transfers (`transferStock()`).
 - **Notification Pipeline**: `LowStockSubscriber` listens to `LowStockEvent` and triggers `NotificationService`, sending alert emails and HMAC-SHA256 signed Webhooks (`X-Inventory-Signature`).
 
 ---
