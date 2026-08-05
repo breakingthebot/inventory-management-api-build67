@@ -2,6 +2,8 @@ AGENTS.md
 BUILD_NOTES.md
 .env
 .env.local
+.env.dev
+.env.test
 .env.*.local
 vendor/
 var/
@@ -10,3 +12,7 @@ var/
 .DS_Store
 .idea/
 .vscode/
+compose.yaml
+compose.override.yaml
+symfony.lock
+src/*/.gitignore

@@ -1,12 +1,13 @@
 # Inventory Management API — Symfony & Doctrine ORM
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import and export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
 - **ORM & Database**: Doctrine ORM 3.x with SQLite DBAL
-- **Bulk Data Processing**: Streaming CSV Importer (`CsvBatchImporter`) with multi-row validation error aggregation & CSV Exporter (`CsvExporter`)
+- **Authentication & RBAC**: `User` entity, `TokenAuthenticator` service, Bearer Token authorization (`ROLE_ADMIN`, `ROLE_WAREHOUSE`, `ROLE_VIEWER`)
+- **Bulk Data Processing**: Streaming CSV Importer (`CsvBatchImporter`) & CSV Exporter (`CsvExporter`)
 - **Multi-Warehouse**: Per-location stock tracking (`Warehouse`, `WarehouseStock`) & stock transfers
 - **Event Management**: Symfony EventDispatcher (`LowStockEvent`, `LowStockSubscriber`)
 - **Security & Webhooks**: Outbound HTTP Webhooks signed with HMAC-SHA256
@@ -50,33 +51,45 @@ Access the API in your browser or HTTP client at: `http://127.0.0.1:8000/api/v1/
 
 ---
 
+## Seeded User Credentials (RBAC Roles)
+
+The API automatically provisions default accounts for testing:
+
+| Role | Email | Password | Permissions |
+| --- | --- | --- | --- |
+| **Admin** | `admin@inventory.internal` | `AdminPass123!` | Full site management, product/category CRUD, warehouse management, webhook admin, imports. |
+| **Warehouse** | `warehouse@inventory.internal` | `WorkerPass123!` | Product updates, stock adjustments, inter-warehouse transfers, CSV bulk imports. |
+| **Viewer** | `auditor@inventory.internal` | `AuditorPass123!` | Read-only access to all API GET endpoints. |
+
+---
+
 ## REST API Documentation
 
-### Core Endpoints
+### Auth & Core Endpoints
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/api/v1/health` | Health check & diagnostic status |
-| `GET` | `/api/v1/categories` | List all categories |
-| `POST` | `/api/v1/categories` | Create a new category |
-| `GET` | `/api/v1/products` | Search & list products (supports `?q=`, `?category_id=`, `?status=`) |
-| `POST` | `/api/v1/products` | Create a new product |
-| `GET` | `/api/v1/products/{id}` | Get single product detail with stock movement audit trail |
-| `PUT` | `/api/v1/products/{id}` | Update product information |
-| `DELETE` | `/api/v1/products/{id}` | Delete a product |
-| `POST` | `/api/v1/products/{id}/stock` | Record stock adjustment (`IN`, `OUT`, `ADJUST`) |
-| `POST` | `/api/v1/products/import/csv` | Bulk import products from CSV spreadsheet |
-| `GET` | `/api/v1/products/export/csv` | Download CSV catalog export of products |
-| `GET` | `/api/v1/stock-movements/export/csv` | Download CSV audit log of stock movements |
-| `GET` | `/api/v1/warehouses` | List all physical warehouses |
-| `POST` | `/api/v1/warehouses` | Create a new warehouse facility |
-| `GET` | `/api/v1/warehouses/{id}` | Get warehouse details and stock inventory |
-| `POST` | `/api/v1/warehouses/{id}/stock` | Adjust stock for specific warehouse |
-| `POST` | `/api/v1/warehouses/transfer` | Transfer stock between source & target warehouse |
-| `GET` | `/api/v1/webhooks/subscriptions` | List active webhook subscribers |
-| `POST` | `/api/v1/webhooks/subscriptions` | Register new webhook subscriber URL |
-| `DELETE` | `/api/v1/webhooks/subscriptions/{id}` | Delete a webhook subscription |
-| `GET` | `/api/v1/notifications/logs` | Inspect outbound notification & webhook logs |
+| Method | Endpoint | Authorization | Description |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/auth/login` | Public | Authenticate user and receive Bearer token |
+| `GET` | `/api/v1/auth/me` | Bearer Token | View active authenticated user profile |
+| `GET` | `/api/v1/health` | Public | Health check & diagnostic status |
+| `GET` | `/api/v1/categories` | Public / Viewer | List all categories |
+| `POST` | `/api/v1/categories` | `ROLE_ADMIN` | Create a new category |
+| `GET` | `/api/v1/products` | Public / Viewer | Search & list products (supports `?q=`, `?category_id=`, `?status=`) |
+| `POST` | `/api/v1/products` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Create a new product |
+| `GET` | `/api/v1/products/{id}` | Public / Viewer | Get single product detail |
+| `PUT` | `/api/v1/products/{id}` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Update product information |
+| `DELETE` | `/api/v1/products/{id}` | `ROLE_ADMIN` | Delete a product |
+| `POST` | `/api/v1/products/{id}/stock` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Record stock adjustment (`IN`, `OUT`, `ADJUST`) |
+| `POST` | `/api/v1/products/import/csv` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Bulk import products from CSV spreadsheet |
+| `GET` | `/api/v1/products/export/csv` | Public / Viewer | Download CSV catalog export |
+| `GET` | `/api/v1/stock-movements/export/csv` | Public / Viewer | Download CSV stock audit log export |
+| `GET` | `/api/v1/warehouses` | Public / Viewer | List all physical warehouses |
+| `POST` | `/api/v1/warehouses` | `ROLE_ADMIN` | Create a new warehouse facility |
+| `POST` | `/api/v1/warehouses/{id}/stock` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Adjust stock for specific warehouse |
+| `POST` | `/api/v1/warehouses/transfer` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Transfer stock between warehouses |
+| `GET` | `/api/v1/webhooks/subscriptions` | Public / Viewer | List active webhook subscribers |
+| `POST` | `/api/v1/webhooks/subscriptions` | `ROLE_ADMIN` | Register new webhook subscriber URL |
+| `GET` | `/api/v1/notifications/logs` | Public / Viewer | Inspect outbound notification & webhook logs |
 
 ---
 
@@ -84,8 +97,8 @@ Access the API in your browser or HTTP client at: `http://127.0.0.1:8000/api/v1/
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
-- **Domain Entities**: `Product`, `Category`, `Warehouse`, `WarehouseStock`, `StockMovement`, `WebhookSubscription`, and `NotificationLog`.
-- **Bulk CSV Importer**: `CsvBatchImporter` parses CSV streams row by row, validating each record against domain constraints. Invalid rows are recorded in a detailed error summary report, ensuring valid records are safely committed without abandoning the batch.
+- **Security & RBAC**: `User` entity implementing `UserInterface` and `PasswordAuthenticatedUserInterface`. `TokenAuthenticator` generates and validates HMAC-signed Bearer tokens (`Authorization: Bearer <token>`).
+- **Bulk CSV Importer**: `CsvBatchImporter` parses CSV streams row by row, validating each record against domain constraints.
 - **Multi-Warehouse Management**: `WarehouseManager` coordinates per-location stock tracking (`WarehouseStock`) and executes inter-warehouse transfers (`transferStock()`).
 - **Notification Pipeline**: `LowStockSubscriber` listens to `LowStockEvent` and triggers `NotificationService`, sending alert emails and HMAC-SHA256 signed Webhooks (`X-Inventory-Signature`).
 
@@ -103,7 +116,7 @@ php vendor/phpunit/phpunit/phpunit
 
 ## Data Handling & Privacy
 
-- **Data Collected**: Stores product inventory metadata, category definitions, warehouse facility locations, per-location stock levels, stock movement logs, webhook subscriber URLs/secrets, and outbound alert delivery logs.
+- **Data Collected**: Stores user accounts (hashed bcrypt passwords), product inventory metadata, category definitions, warehouse facility locations, per-location stock levels, stock movement logs, webhook subscriber URLs/secrets, and outbound alert delivery logs.
 - **Data Persistence**: All records persist locally in configured SQLite database files (`var/app.db`).
 - **Secrets & Keys**: Environment variables live in `.env` and are strictly excluded from git version control.
 

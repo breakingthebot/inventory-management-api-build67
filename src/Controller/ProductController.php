@@ -1,15 +1,17 @@
 <?php
 
 // src/Controller/ProductController.php
-// REST API controller providing Full CRUD for Inventory Products with search, filtering, and validation.
-// Connects to: src/Entity/Product.php, src/Entity/Category.php, src/Repository/ProductRepository.php, src/Repository/CategoryRepository.php
+// REST API controller providing Full CRUD for Inventory Products with search, filtering, validation, and Bearer token RBAC.
+// Connects to: src/Entity/Product.php, src/Entity/Category.php, src/Service/TokenAuthenticator.php
 // Created: 2026-08-05
 
 namespace App\Controller;
 
 use App\Entity\Product;
+use App\Entity\User;
 use App\Repository\CategoryRepository;
 use App\Repository\ProductRepository;
+use App\Service\TokenAuthenticator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,6 +26,7 @@ class ProductController extends AbstractController
     public function __construct(
         private readonly ProductRepository $productRepository,
         private readonly CategoryRepository $categoryRepository,
+        private readonly TokenAuthenticator $authenticator,
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer
     ) {
@@ -60,6 +63,14 @@ class ProductController extends AbstractController
     #[Route('', name: 'create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
+        $user = $this->authenticator->getUserFromRequest($request);
+        if (!$user) {
+            return $this->json(['error' => 'Authentication required. Missing or invalid Bearer token.'], Response::HTTP_UNAUTHORIZED);
+        }
+        if (!in_array(User::ROLE_ADMIN, $user->getRoles(), true) && !in_array(User::ROLE_WAREHOUSE, $user->getRoles(), true)) {
+            return $this->json(['error' => 'Access denied. Requires ROLE_ADMIN or ROLE_WAREHOUSE.'], Response::HTTP_FORBIDDEN);
+        }
+
         $data = json_decode($request->getContent(), true);
         if (!$data) {
             return $this->json(['error' => 'Invalid JSON payload'], Response::HTTP_BAD_REQUEST);
@@ -108,6 +119,14 @@ class ProductController extends AbstractController
     #[Route('/{id}', name: 'update', methods: ['PUT'])]
     public function update(int $id, Request $request): JsonResponse
     {
+        $user = $this->authenticator->getUserFromRequest($request);
+        if (!$user) {
+            return $this->json(['error' => 'Authentication required. Missing or invalid Bearer token.'], Response::HTTP_UNAUTHORIZED);
+        }
+        if (!in_array(User::ROLE_ADMIN, $user->getRoles(), true) && !in_array(User::ROLE_WAREHOUSE, $user->getRoles(), true)) {
+            return $this->json(['error' => 'Access denied. Requires ROLE_ADMIN or ROLE_WAREHOUSE.'], Response::HTTP_FORBIDDEN);
+        }
+
         $product = $this->productRepository->find($id);
         if (!$product) {
             return $this->json(['error' => 'Product not found'], Response::HTTP_NOT_FOUND);
@@ -154,8 +173,16 @@ class ProductController extends AbstractController
     }
 
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
-    public function delete(int $id): JsonResponse
+    public function delete(int $id, Request $request): JsonResponse
     {
+        $user = $this->authenticator->getUserFromRequest($request);
+        if (!$user) {
+            return $this->json(['error' => 'Authentication required. Missing or invalid Bearer token.'], Response::HTTP_UNAUTHORIZED);
+        }
+        if (!in_array(User::ROLE_ADMIN, $user->getRoles(), true)) {
+            return $this->json(['error' => 'Access denied. Requires ROLE_ADMIN.'], Response::HTTP_FORBIDDEN);
+        }
+
         $product = $this->productRepository->find($id);
         if (!$product) {
             return $this->json(['error' => 'Product not found'], Response::HTTP_NOT_FOUND);
