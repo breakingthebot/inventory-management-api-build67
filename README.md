@@ -2,11 +2,12 @@
 
 [![Inventory Management API CI](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml/badge.svg)](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml)
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Full Multi-Tenant Organization Isolation (`Tenant`, `TenantContext`, `X-Tenant-Code` headers), E-Commerce Stock Reservation Engine (TTL Cart Holds & Oversell Prevention), Webhook Failure Retry Queue & Circuit Breaker, Automated Inventory Audit Sampling & Stock Reconciliation, Multi-Currency Conversions (`USD`, `EUR`, `GBP`, `CAD`), Regional Tax Rate Matrix (`US-CA`, `EU-DE`, `UK-VAT`), API Rate Limiting & Sliding Window Throttling, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Custom Export Report Builder (HTML-PDF Valuation Statements & SpreadsheetML Excel XML), Full Multi-Tenant Organization Isolation (`Tenant`, `TenantContext`, `X-Tenant-Code` headers), E-Commerce Stock Reservation Engine (TTL Cart Holds & Oversell Prevention), Webhook Failure Retry Queue & Circuit Breaker, Automated Inventory Audit Sampling & Stock Reconciliation, Multi-Currency Conversions (`USD`, `EUR`, `GBP`, `CAD`), Regional Tax Rate Matrix (`US-CA`, `EU-DE`, `UK-VAT`), API Rate Limiting & Sliding Window Throttling, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
+- **Report Generation Engine**: `ReportGenerator`, Twig PDF Valuation templates, SpreadsheetML XML Excel Exports
 - **Multi-Tenant Architecture**: `Tenant`, `TenantContext`, `TenantSubscriber` (Header `X-Tenant-Code` or User profile tenant resolution)
 - **Stock Reservation Engine**: `StockReservation`, `StockReservationEngine` (15-min TTL cart holds, $Available = Physical - Held$ math)
 - **Webhook Retry & Circuit Breaker**: `WebhookRetryQueue`, `WebhookRetryEngine` ($10 \times 2^{n-1}$ exponential backoff, circuit breaker trip at 5 failures)
@@ -71,6 +72,8 @@ Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 | Method | Endpoint | Authorization | Description |
 | --- | --- | --- | --- |
 | `GET` | `/admin/dashboard` | Web Browser | Interactive Admin Dashboard UI with metrics & FEFO alerts |
+| `GET` | `/api/v1/reports/valuation/pdf` | Public / Viewer | Stream HTML-PDF inventory valuation statement |
+| `GET` | `/api/v1/reports/stock-movements/excel` | Public / Viewer | Download SpreadsheetML XML Excel stock audit log |
 | `GET` | `/api/v1/tenants` | Public / Viewer | List multi-tenant organization accounts |
 | `POST` | `/api/v1/tenants` | `ROLE_ADMIN` | Provision a new tenant organization (`FREE`, `PRO`, `ENTERPRISE`) |
 | `POST` | `/api/v1/auth/login` | Public | Authenticate user and receive Bearer token |
@@ -124,10 +127,9 @@ Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
+- **Report Generator Engine**: `ReportGenerator` renders print-ready HTML valuation statements (`reports/valuation.html.twig`) and generates Microsoft SpreadsheetML XML workbooks for Excel export.
 - **Multi-Tenant Architecture**: `TenantSubscriber` inspects incoming `X-Tenant-Code` headers or Bearer token user profiles to set `TenantContext`, ensuring isolated organization scoping.
 - **Stock Reservation Engine**: `StockReservationEngine` calculates available unreserved stock ($Available = Physical - Held$) and holds cart items for 15-minute checkout windows before confirming or purging expired holds.
-- **Webhook Retry & Circuit Breaker**: `WebhookRetryEngine` calculates exponential backoff ($10 \times 2^{n-1}$ s) and deactivates subscriptions after 5 consecutive failures.
-- **Inventory Audit Engine**: `AuditManager::createAuditCycle()` generates random product sampling lists for physical count verification. Submitting counts via `reconcileAuditCycle()` posts `ADJUST` stock movements for variance items.
 
 ---
 
