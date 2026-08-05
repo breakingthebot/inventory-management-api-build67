@@ -5,14 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-08-05
+
+### Added
+- Automated Inventory Audit Sampling & Count Reconciliation Subsystem (`AuditCycle` & `AuditDiscrepancy` entities).
+- Random product sampling cycle creation (`AuditManager::createAuditCycle()`).
+- Automated stock count reconciliation engine posting `ADJUST` stock movements for physical variance items (`AuditManager::reconcileAuditCycle()`).
+- REST API Audit endpoints (`GET /api/v1/audits`, `POST /api/v1/audits`, `GET /api/v1/audits/{id}`, `POST /api/v1/audits/{id}/reconcile`).
+- Automated PHPUnit tests for audit sampling generation, variance math calculations, and stock adjustments (25 tests, 111 assertions passing).
+
 ## [1.10.0] - 2026-08-05
 
 ### Added
 - Multi-Currency Pricing & Regional Tax Rate Matrix architecture (`CurrencyRate` & `TaxZone` entities).
 - Currency conversion and gross/net tax calculation engine (`CurrencyConverter`).
 - Default seeded currencies (`USD`, `EUR`, `GBP`, `CAD`) and regional tax zones (`US-CA`, `EU-DE`, `UK-VAT`).
-- REST API Currency endpoints (`GET /api/v1/currencies`, `POST /api/v1/currencies/update`, `GET /api/v1/tax-zones`, `GET /api/v1/products/{id}/price`).
-- Automated PHPUnit tests for exchange rate conversion math, tax matrix additions, and formatted currency outputs (23 tests, 100 assertions passing).
 
 ## [1.9.0] - 2026-08-05
 
@@ -25,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Interactive Operations Admin Dashboard UI (`DashboardController` rendering `dashboard/index.html.twig`).
-- Real-time catalog valuation calculation, stock status health breakdown progress bar, active warehouse metrics, and pending PO status counters.
 
 ## [1.7.0] - 2026-08-05
 
