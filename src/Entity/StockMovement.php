@@ -1,8 +1,8 @@
 <?php
 
 // src/Entity/StockMovement.php
-// Doctrine ORM Entity logging inventory stock transactions (IN, OUT, ADJUST).
-// Connects to: src/Entity/Product.php, src/Repository/StockMovementRepository.php
+// Doctrine ORM Entity logging inventory stock transactions (IN, OUT, ADJUST, TRANSFER).
+// Connects to: src/Entity/Product.php, src/Entity/Warehouse.php, src/Repository/StockMovementRepository.php
 // Created: 2026-08-05
 
 namespace App\Entity;
@@ -20,6 +20,7 @@ class StockMovement
     public const TYPE_IN = 'IN';
     public const TYPE_OUT = 'OUT';
     public const TYPE_ADJUST = 'ADJUST';
+    public const TYPE_TRANSFER = 'TRANSFER';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -32,9 +33,14 @@ class StockMovement
     #[Groups(['movement:read'])]
     private ?Product $product = null;
 
+    #[ORM\ManyToOne(targetEntity: Warehouse::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['movement:read'])]
+    private ?Warehouse $warehouse = null;
+
     #[ORM\Column(length: 10)]
     #[Assert\NotBlank]
-    #[Assert\Choice(choices: [self::TYPE_IN, self::TYPE_OUT, self::TYPE_ADJUST])]
+    #[Assert\Choice(choices: [self::TYPE_IN, self::TYPE_OUT, self::TYPE_ADJUST, self::TYPE_TRANSFER])]
     #[Groups(['movement:read', 'movement:write', 'product:detail'])]
     private ?string $type = null;
 
@@ -78,6 +84,17 @@ class StockMovement
     public function setProduct(?Product $product): self
     {
         $this->product = $product;
+        return $this;
+    }
+
+    public function getWarehouse(): ?Warehouse
+    {
+        return $this->warehouse;
+    }
+
+    public function setWarehouse(?Warehouse $warehouse): self
+    {
+        $this->warehouse = $warehouse;
         return $this;
     }
 
