@@ -1,15 +1,16 @@
 # Inventory Management API — Symfony & Doctrine ORM
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
 - **ORM & Database**: Doctrine ORM 3.x with SQLite DBAL
+- **Automated PO System**: `Supplier`, `PurchaseOrder`, `PurchaseOrderItem`, `PurchaseOrderGenerator`, and `ReorderEventSubscriber`
 - **Authentication & RBAC**: `User` entity, `TokenAuthenticator` service, Bearer Token authorization (`ROLE_ADMIN`, `ROLE_WAREHOUSE`, `ROLE_VIEWER`)
 - **Bulk Data Processing**: Streaming CSV Importer (`CsvBatchImporter`) & CSV Exporter (`CsvExporter`)
 - **Multi-Warehouse**: Per-location stock tracking (`Warehouse`, `WarehouseStock`) & stock transfers
-- **Event Management**: Symfony EventDispatcher (`LowStockEvent`, `LowStockSubscriber`)
+- **Event Management**: Symfony EventDispatcher (`LowStockEvent`, `LowStockSubscriber`, `ReorderEventSubscriber`)
 - **Security & Webhooks**: Outbound HTTP Webhooks signed with HMAC-SHA256
 - **Validation**: Symfony Validator
 - **Serializer**: Symfony Serializer (Group contexts)
@@ -57,15 +58,15 @@ The API automatically provisions default accounts for testing:
 
 | Role | Email | Password | Permissions |
 | --- | --- | --- | --- |
-| **Admin** | `admin@inventory.internal` | `AdminPass123!` | Full site management, product/category CRUD, warehouse management, webhook admin, imports. |
-| **Warehouse** | `warehouse@inventory.internal` | `WorkerPass123!` | Product updates, stock adjustments, inter-warehouse transfers, CSV bulk imports. |
+| **Admin** | `admin@inventory.internal` | `AdminPass123!` | Full site management, product/category CRUD, warehouse management, PO management, webhooks, imports. |
+| **Warehouse** | `warehouse@inventory.internal` | `WorkerPass123!` | Product updates, stock adjustments, inter-warehouse transfers, PO receiving, CSV bulk imports. |
 | **Viewer** | `auditor@inventory.internal` | `AuditorPass123!` | Read-only access to all API GET endpoints. |
 
 ---
 
 ## REST API Documentation
 
-### Auth & Core Endpoints
+### Auth, Inventory & PO Endpoints
 
 | Method | Endpoint | Authorization | Description |
 | --- | --- | --- | --- |
@@ -80,6 +81,11 @@ The API automatically provisions default accounts for testing:
 | `PUT` | `/api/v1/products/{id}` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Update product information |
 | `DELETE` | `/api/v1/products/{id}` | `ROLE_ADMIN` | Delete a product |
 | `POST` | `/api/v1/products/{id}/stock` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Record stock adjustment (`IN`, `OUT`, `ADJUST`) |
+| `GET` | `/api/v1/suppliers` | Public / Viewer | List vendor suppliers |
+| `POST` | `/api/v1/suppliers` | `ROLE_ADMIN` | Register a new supplier |
+| `GET` | `/api/v1/purchase-orders` | Public / Viewer | List Purchase Orders (filter `?status=`) |
+| `GET` | `/api/v1/purchase-orders/{id}` | Public / Viewer | Get Purchase Order details with line items |
+| `POST` | `/api/v1/purchase-orders/{id}/receive` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Receive goods shipment and auto-restock inventory |
 | `POST` | `/api/v1/products/import/csv` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Bulk import products from CSV spreadsheet |
 | `GET` | `/api/v1/products/export/csv` | Public / Viewer | Download CSV catalog export |
 | `GET` | `/api/v1/stock-movements/export/csv` | Public / Viewer | Download CSV stock audit log export |
@@ -97,10 +103,9 @@ The API automatically provisions default accounts for testing:
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
+- **Automated PO Reordering**: When stock deductions transition items into `LOW_STOCK`, `ReorderEventSubscriber` invokes `PurchaseOrderGenerator` to calculate reorder quantities `max(10, (minStockLevel * 2) - currentStock)` and creates or appends line items to `DRAFT` Purchase Orders.
+- **Goods Receiving Engine**: Receiving PO shipments (`POST /api/v1/purchase-orders/{id}/receive`) automatically updates PO status to `RECEIVED` and invokes `StockManager` or `WarehouseManager` to restock physical inventory.
 - **Security & RBAC**: `User` entity implementing `UserInterface` and `PasswordAuthenticatedUserInterface`. `TokenAuthenticator` generates and validates HMAC-signed Bearer tokens (`Authorization: Bearer <token>`).
-- **Bulk CSV Importer**: `CsvBatchImporter` parses CSV streams row by row, validating each record against domain constraints.
-- **Multi-Warehouse Management**: `WarehouseManager` coordinates per-location stock tracking (`WarehouseStock`) and executes inter-warehouse transfers (`transferStock()`).
-- **Notification Pipeline**: `LowStockSubscriber` listens to `LowStockEvent` and triggers `NotificationService`, sending alert emails and HMAC-SHA256 signed Webhooks (`X-Inventory-Signature`).
 
 ---
 
@@ -116,7 +121,7 @@ php vendor/phpunit/phpunit/phpunit
 
 ## Data Handling & Privacy
 
-- **Data Collected**: Stores user accounts (hashed bcrypt passwords), product inventory metadata, category definitions, warehouse facility locations, per-location stock levels, stock movement logs, webhook subscriber URLs/secrets, and outbound alert delivery logs.
+- **Data Collected**: Stores user accounts (hashed bcrypt passwords), product inventory metadata, category definitions, warehouse facility locations, per-location stock levels, stock movement logs, supplier definitions, purchase orders, webhook subscriber URLs/secrets, and outbound alert delivery logs.
 - **Data Persistence**: All records persist locally in configured SQLite database files (`var/app.db`).
 - **Secrets & Keys**: Environment variables live in `.env` and are strictly excluded from git version control.
 
