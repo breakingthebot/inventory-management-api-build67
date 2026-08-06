@@ -2,11 +2,12 @@
 
 [![Inventory Management API CI](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml/badge.svg)](https://github.com/breakingthebot/inventory-management-api-build67/actions/workflows/ci.yml)
 
-A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Product Variant Matrix & SKU Options Engine (`ProductOption`, `ProductVariant`, `VariantManager`), Custom Export Report Builder (HTML-PDF Valuation Statements & SpreadsheetML Excel XML), Full Multi-Tenant Organization Isolation (`Tenant`, `TenantContext`, `X-Tenant-Code` headers), E-Commerce Stock Reservation Engine (TTL Cart Holds & Oversell Prevention), Webhook Failure Retry Queue & Circuit Breaker, Automated Inventory Audit Sampling & Stock Reconciliation, Multi-Currency Conversions (`USD`, `EUR`, `GBP`, `CAD`), Regional Tax Rate Matrix (`US-CA`, `EU-DE`, `UK-VAT`), API Rate Limiting & Sliding Window Throttling, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
+A high-performance RESTful Inventory Management API built with Symfony 6.4 and PHP 8.3 featuring Doctrine ORM entity mappings, Automated Backorder Queue & Allocation Engine (`Backorder`, `BackorderManager`), Product Variant Matrix & SKU Options Engine (`ProductOption`, `ProductVariant`, `VariantManager`), Custom Export Report Builder (HTML-PDF Valuation Statements & SpreadsheetML Excel XML), Full Multi-Tenant Organization Isolation (`Tenant`, `TenantContext`, `X-Tenant-Code` headers), E-Commerce Stock Reservation Engine (TTL Cart Holds & Oversell Prevention), Webhook Failure Retry Queue & Circuit Breaker, Automated Inventory Audit Sampling & Stock Reconciliation, Multi-Currency Conversions (`USD`, `EUR`, `GBP`, `CAD`), Regional Tax Rate Matrix (`US-CA`, `EU-DE`, `UK-VAT`), API Rate Limiting & Sliding Window Throttling, Interactive Operations Admin Dashboard UI, Batch/Lot Number Tracking, First Expired First Out (FEFO) allocation, GitHub Actions CI/CD pipeline, Automated Purchase Order (PO) Reordering, Supplier Management, Bearer Token Authentication, Role-Based Access Control (RBAC), multi-warehouse location tracking, inter-warehouse stock transfers, streaming CSV bulk import/export, automatic stock status recalculation, low-stock event dispatches, HMAC-signed webhooks, notification audit logging, input validation, serialization group contexts, and full CRUD operations.
 
 ## Stack
 - **Language & Runtime**: PHP 8.3
 - **Framework**: Symfony 6.4 (Microkernel architecture)
+- **Backorder Allocation Engine**: `Backorder`, `BackorderManager` (FIFO priority queue, automatic restock allocation)
 - **Product Variant Matrix**: `ProductOption`, `ProductVariant`, `VariantManager` (Parent-child SKUs, option mappings `{"color":"Red","size":"XL"}`, price overrides)
 - **Report Generation Engine**: `ReportGenerator`, Twig PDF Valuation templates, SpreadsheetML XML Excel Exports
 - **Multi-Tenant Architecture**: `Tenant`, `TenantContext`, `TenantSubscriber` (Header `X-Tenant-Code` or User profile tenant resolution)
@@ -73,6 +74,9 @@ Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 | Method | Endpoint | Authorization | Description |
 | --- | --- | --- | --- |
 | `GET` | `/admin/dashboard` | Web Browser | Interactive Admin Dashboard UI with metrics & FEFO alerts |
+| `GET` | `/api/v1/backorders` | Public / Viewer | List queued backorders (filter `?status=`, `?product_id=`) |
+| `POST` | `/api/v1/backorders` | Public | Place a backorder request for an out-of-stock item |
+| `POST` | `/api/v1/backorders/{id}/cancel` | Public | Cancel a pending backorder request |
 | `GET` | `/api/v1/products/{id}/variants` | Public / Viewer | List all child variant SKUs for a parent catalog product |
 | `POST` | `/api/v1/products/{id}/variants` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Create child variant SKU with option values & price overrides |
 | `POST` | `/api/v1/variants/{id}/stock` | `ROLE_ADMIN` / `ROLE_WAREHOUSE` | Record stock adjustment for a specific variant SKU |
@@ -131,10 +135,10 @@ Access API Health Check: `http://127.0.0.1:8000/api/v1/health`
 
 I structured this application around a clean separation of concerns using Symfony's microkernel pattern and Doctrine ORM. 
 
+- **Backorder Allocation Engine**: `BackorderManager` manages queued customer demand in FIFO sequence (`createdAt` ASC) and automatically allocates restock shipments.
 - **Product Variant Engine**: `VariantManager` manages child variant SKUs (`ProductVariant`), option mappings (e.g. `{"color":"Red", "size":"XL"}`), price overrides, and per-variant stock tracking.
 - **Report Generator Engine**: `ReportGenerator` renders print-ready HTML valuation statements (`reports/valuation.html.twig`) and generates Microsoft SpreadsheetML XML workbooks for Excel export.
 - **Multi-Tenant Architecture**: `TenantSubscriber` inspects incoming `X-Tenant-Code` headers or Bearer token user profiles to set `TenantContext`, ensuring isolated organization scoping.
-- **Stock Reservation Engine**: `StockReservationEngine` calculates available unreserved stock ($Available = Physical - Held$) and holds cart items for 15-minute checkout windows before confirming or purging expired holds.
 
 ---
 
@@ -150,7 +154,7 @@ php vendor/phpunit/phpunit/phpunit
 
 ## Data Handling & Privacy
 
-- **Data Collected**: Stores tenant organization accounts, user accounts (hashed bcrypt passwords), product inventory metadata, product variant SKUs & option attributes, category definitions, batch lots & expiration dates, warehouse facility locations, per-location stock levels, stock movement logs, supplier definitions, purchase orders, audit cycles & count discrepancies, stock reservations & TTL tokens, webhook retry queue entries, currency exchange rates, tax zones, webhook subscriber URLs/secrets, and outbound alert delivery logs.
+- **Data Collected**: Stores tenant organization accounts, user accounts (hashed bcrypt passwords), product inventory metadata, product variant SKUs & option attributes, backorder queues & customer emails, category definitions, batch lots & expiration dates, warehouse facility locations, per-location stock levels, stock movement logs, supplier definitions, purchase orders, audit cycles & count discrepancies, stock reservations & TTL tokens, webhook retry queue entries, currency exchange rates, tax zones, webhook subscriber URLs/secrets, and outbound alert delivery logs.
 - **Data Persistence**: All records persist locally in configured SQLite database files (`var/app.db`).
 - **Secrets & Keys**: Environment variables live in `.env` and are strictly excluded from git version control.
 
