@@ -55,6 +55,10 @@ class PurchaseOrder
     #[Groups(['po:read'])]
     private ?\DateTimeImmutable $expectedDeliveryDate = null;
 
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    #[Groups(['po:read'])]
+    private ?\DateTimeImmutable $receivedAt = null;
+
     #[ORM\Column]
     #[Groups(['po:read'])]
     private \DateTimeImmutable $createdAt;
@@ -154,6 +158,17 @@ class PurchaseOrder
     public function setExpectedDeliveryDate(?\DateTimeImmutable $expectedDeliveryDate): self
     {
         $this->expectedDeliveryDate = $expectedDeliveryDate;
+        return $this;
+    }
+
+    public function getReceivedAt(): ?\DateTimeImmutable
+    {
+        return $this->receivedAt;
+    }
+
+    public function setReceivedAt(?\DateTimeImmutable $receivedAt): self
+    {
+        $this->receivedAt = $receivedAt;
         return $this;
     }
 

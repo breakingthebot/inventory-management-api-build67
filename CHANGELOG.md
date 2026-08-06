@@ -5,19 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-08-05
+
+### Added
+- Automated Supplier Performance & Lead Time Analytics Engine (`SupplierMetrics` entity & `SupplierMetricsRepository`).
+- Data-driven vendor scorecard calculation engine (`SupplierAnalyticsEngine`) analyzing Purchase Order lead-time latency ($LeadTime = ReceivedDate - OrderDate$) and fulfillment accuracy percentages.
+- REST API Supplier Analytics endpoints (`GET /api/v1/suppliers/{id}/metrics`, `POST /api/v1/suppliers/{id}/metrics/recalculate`, `GET /api/v1/suppliers/analytics/leaderboard`).
+- Added `receivedAt` tracking to `PurchaseOrder` entity and `PurchaseOrderGenerator::receiveGoods()`.
+- Automated PHPUnit tests for lead-time calculation math, fulfillment accuracy percentages, and vendor scorecards (41 tests, 168 assertions passing).
+
 ## [1.17.0] - 2026-08-05
 
 ### Added
 - Automated Backorder Queue & Stock Allocation Engine (`Backorder` entity & `BackorderRepository`).
-- FIFO priority queue fulfillment allocation (`BackorderManager::allocateStockToBackorders()`) automatically deducting inventory stock upon replenishment shipments.
-- REST API Backorder endpoints (`GET /api/v1/backorders`, `POST /api/v1/backorders`, `POST /api/v1/backorders/{id}/cancel`).
-- Automated PHPUnit tests for backorder queue creation, FIFO allocation ordering, and status updates (40 tests, 163 assertions passing).
+- FIFO priority queue fulfillment allocation (`BackorderManager::allocateStockToBackorders()`).
 
 ## [1.16.0] - 2026-08-05
 
 ### Added
 - Product Variant Matrix & SKU Options Subsystem (`ProductOption` & `ProductVariant` entities).
-- Variant SKU management engine (`VariantManager`).
 
 ## [1.15.0] - 2026-08-05
 

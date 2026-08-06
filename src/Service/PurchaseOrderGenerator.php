@@ -99,6 +99,7 @@ class PurchaseOrderGenerator
         }
 
         $po->setStatus(PurchaseOrder::STATUS_RECEIVED);
+        $po->setReceivedAt(new \DateTimeImmutable());
         $this->poRepository->save($po, true);
     }
 
