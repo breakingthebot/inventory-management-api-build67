@@ -5,20 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-08-05
+
+### Added
+- Event-Sourced Entity Revision History & Audit Trail Engine (`EntityRevision` entity & `EntityRevisionRepository`).
+- Point-in-time snapshot recorder and state rollback engine (`AuditTrailEngine::rollbackEntityToRevision()`).
+- REST API Revision endpoints (`GET /api/v1/revisions`, `POST /api/v1/revisions/{id}/rollback`).
+- Automated PHPUnit tests for revision snapshot recording, state serialization, timeline queries, and state rollbacks (43 tests, 176 assertions passing).
+
 ## [1.18.0] - 2026-08-05
 
 ### Added
 - Automated Supplier Performance & Lead Time Analytics Engine (`SupplierMetrics` entity & `SupplierMetricsRepository`).
-- Data-driven vendor scorecard calculation engine (`SupplierAnalyticsEngine`) analyzing Purchase Order lead-time latency ($LeadTime = ReceivedDate - OrderDate$) and fulfillment accuracy percentages.
-- REST API Supplier Analytics endpoints (`GET /api/v1/suppliers/{id}/metrics`, `POST /api/v1/suppliers/{id}/metrics/recalculate`, `GET /api/v1/suppliers/analytics/leaderboard`).
-- Added `receivedAt` tracking to `PurchaseOrder` entity and `PurchaseOrderGenerator::receiveGoods()`.
-- Automated PHPUnit tests for lead-time calculation math, fulfillment accuracy percentages, and vendor scorecards (41 tests, 168 assertions passing).
+- Data-driven vendor scorecard calculation engine (`SupplierAnalyticsEngine`).
 
 ## [1.17.0] - 2026-08-05
 
 ### Added
 - Automated Backorder Queue & Stock Allocation Engine (`Backorder` entity & `BackorderRepository`).
-- FIFO priority queue fulfillment allocation (`BackorderManager::allocateStockToBackorders()`).
 
 ## [1.16.0] - 2026-08-05
 
