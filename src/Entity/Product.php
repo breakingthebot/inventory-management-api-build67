@@ -78,6 +78,10 @@ class Product
     #[Groups(['product:detail'])]
     private Collection $stockMovements;
 
+    #[ORM\OneToMany(mappedBy: 'parentProduct', targetEntity: ProductVariant::class, cascade: ['persist', 'remove'])]
+    #[Groups(['product:read'])]
+    private Collection $variants;
+
     #[ORM\Column]
     #[Groups(['product:read'])]
     private \DateTimeImmutable $createdAt;
@@ -89,6 +93,7 @@ class Product
     public function __construct()
     {
         $this->stockMovements = new ArrayCollection();
+        $this->variants = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
         $this->recalculateStatus();
@@ -216,6 +221,23 @@ class Product
     public function getStockMovements(): Collection
     {
         return $this->stockMovements;
+    }
+
+    /**
+     * @return Collection<int, ProductVariant>
+     */
+    public function getVariants(): Collection
+    {
+        return $this->variants;
+    }
+
+    public function addVariant(ProductVariant $variant): self
+    {
+        if (!$this->variants->contains($variant)) {
+            $this->variants->add($variant);
+            $variant->setParentProduct($this);
+        }
+        return $this;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

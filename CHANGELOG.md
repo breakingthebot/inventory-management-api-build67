@@ -5,20 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-08-05
+
+### Added
+- Product Variant Matrix & SKU Options Subsystem (`ProductOption` & `ProductVariant` entities).
+- Variant SKU management engine (`VariantManager`) supporting option mappings (e.g. `{"color":"Red", "size":"XL"}`), price overrides, and per-variant stock tracking.
+- REST API Variant endpoints (`GET /api/v1/products/{id}/variants`, `POST /api/v1/products/{id}/variants`, `POST /api/v1/variants/{id}/stock`).
+- Automated PHPUnit tests for variant SKU generation, option mapping, price overrides, and atomic variant stock adjustments (38 tests, 152 assertions passing).
+
 ## [1.15.0] - 2026-08-05
 
 ### Added
 - Custom Export Report Builder Subsystem (`ReportGenerator` service & `ReportController`).
 - Print-ready HTML-PDF Inventory Valuation Certificate template (`templates/reports/valuation.html.twig`).
-- SpreadsheetML XML Excel Export Engine (`ReportGenerator::generateStockMovementsExcelXml()`).
-- REST API Report Endpoints (`GET /api/v1/reports/valuation/pdf`, `GET /api/v1/reports/stock-movements/excel`).
-- Automated PHPUnit tests for valuation report calculations, template variable passing, and SpreadsheetML XML formatting (35 tests, 142 assertions passing).
 
 ## [1.14.0] - 2026-08-05
 
 ### Added
 - Full Multi-Tenant Account & Organization Isolation Subsystem (`Tenant` entity & `TenantRepository`).
-- In-memory tenant context manager (`TenantContext`) storing active organization scope per HTTP request cycle.
 
 ## [1.13.0] - 2026-08-05
 
